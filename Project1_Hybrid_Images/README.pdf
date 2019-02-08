@@ -1,0 +1,19 @@
+Rafrodo
+-------------------
+Renee Zacharowicz 
+CS5670 Spring 2019
+A1 Hybrid Images
+
+High pass filter [Rafael, left.jpg]:
+Kernel size - 11
+Kernel sigma - 7.0
+
+Low pass filter [Frodo, right.jpg]:
+Kernel size - 11
+Kernel sigma - 6.0
+
+
+Mix-in ratio 0.60 (Low)
+
+
+
