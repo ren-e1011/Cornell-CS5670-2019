@@ -29,7 +29,52 @@ class KeypointDetector(object):
             (in degrees), the detector response (Harris score for Harris detector)
             and set the size to 10.
         '''
-        raise NotImplementedError()
+
+        #convert to greyscale??
+
+        #all_points to be used to filter out keypoints
+        all_points = np.array(image.shape)
+        #does image need to be made to 2d
+        gauss_blur = cv2.GaussianBlur(image,(5,5),sigmaX=0.5,borderType=cv.BORDER_REFLECT)
+
+        #compute gradient at each point, using sobel
+        ## what to do about output cv_64f
+        sobelx = cv2.Sobel(image,cv2.CV_64F,1,0,ksize=3)
+        sobely = cv2.Sobel(image,cv2.CV_64F,0,1,ksize=3)
+        angle = cv2.phase(sobelx,sobely,angleInDegrees=True)
+
+        for row in range(len(image)):
+            for col in range(len(row)):
+            #create H matrix from entries in the gradient
+            H = np.zeros((2,2))
+            Ixp_sq = sobelx[row,col]**2
+            IxpIyp = sobelx[row,col]*sobely[row,col]
+            Iyp_sq = sobely[row,col]**2
+            det = (Ixp_sq*Iyp_sq) -  IxpIyp**2
+            trace = Ixp_sq+Iyp_sq
+            #compute corner scores
+            all_points[row,col] = det - 0.1*trace**2
+
+        result = ndimage.maximum_filter(all_points, size=(7,7))
+        #compute eigenvalues
+        #lambda min == Harris operator/Harris corner detector
+        #find points with large response (lambda min > threshold)
+        #choose points where lambda min is local max as features
+        
+        keypoints = []
+        
+        for row in range(len(result)):
+            for col in range(len(row)):
+                if result[row,col] > 0:
+                    keypoints.append(cv2.KeyPoint(x=row,y=col
+                        , _size=10
+                        , _angle=angle[row,col]
+                        , _response=all_points[row,col]
+            
+            
+        return keypoints
+
+
 
 
 class DummyKeypointDetector(KeypointDetector):
