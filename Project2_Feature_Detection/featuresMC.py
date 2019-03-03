@@ -302,7 +302,7 @@ class HarrisKeypointDetector(KeypointDetector):
         # Loop through feature points in harrisMaxImage and fill in information
         # needed for descriptor computation for each point.
         # You need to fill x, y, and angle.
-        raise Exception("TODO 3: in features.py not implemented")
+    
                                             
         for y in range(height):
             for x in range(width):
