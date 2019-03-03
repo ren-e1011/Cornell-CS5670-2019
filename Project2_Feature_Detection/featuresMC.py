@@ -552,14 +552,16 @@ class SSDFeatureMatcher(FeatureMatcher):
         if desc1.shape[0] == 0 or desc2.shape[0] == 0:
             return []
         
-        # TODO 7: Perform simple feature matching.  This uses the SSD
-        # distance between two feature vectors, and matches a feature in
-        # the first image with the closest feature in the second image.
-        # Note: multiple features from the first image may match the same
-        # feature in the second image.
-        # TODO-BLOCK-BEGIN
-        raise Exception("TODO 7: in features.py not implemented")
-        # TODO-BLOCK-END
+        dist = scipy.spatial.distance.cdist(desc1, desc2, metric = 'euclidean')
+        index = np.argmin(dist, axis = 1)
+        
+        for i in range(desc1.shape[0]):
+            m = cv2.DMatch()
+            m.queryIdx = i
+            m.trainIdx = index[i]
+            m.distance = dist[i][index[i]]
+            
+            matches.append(m)
         
         return matches
 
