@@ -250,11 +250,19 @@ class HarrisKeypointDetector(KeypointDetector):
             its 7x7 neighborhood.
             '''
         #destImage = np.zeros_like(harrisImage, np.bool)
-
+        height, width = harrisImage.shape[:2]
         result = ndimage.maximum_filter(harrisImage, size = (7,7))
         
         destImage = (harrisImage == result)
         
+        window_size = 7
+        #height, width = harrisImage.shape[:2]
+        for i in range(height):
+            for j in range(width):
+                
+                if not inbounds([height, width], [i-window_size, j-window_size]) and inbounds([height, width], [i+window_size + 1, j+window_size + 1]):
+                    
+                    destImage[i][j] = True
         
         # TODO 2: Compute the local maxima image
         # TODO-BLOCK-BEGIN
