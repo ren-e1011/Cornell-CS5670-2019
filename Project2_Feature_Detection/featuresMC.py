@@ -15,6 +15,25 @@ def inbounds(shape, indices):
             return False
     return True
 
+def atan2d(y, x):
+    """compute atan2(y, x) with the result in degrees"""
+    
+    if abs(y) > abs(x):
+        q = 2; x, y = y, x
+    else:
+        q = 0
+    if x < 0:
+        q += 1; x = -x
+    
+    ang = math.degrees(math.atan2(y, x))
+    if q == 1:
+        ang = (180 if y >= 0 else -180) - ang
+    elif q == 2:
+        ang =  90 - ang
+    elif q == 3:
+        ang = -90 + ang
+    return ang
+
 
 ## Keypoint detectors ##########################################################
 
@@ -137,7 +156,11 @@ class HarrisKeypointDetector(KeypointDetector):
         
         harrisImage = Wdet - 0.1*(Wtr**2)
 
-        orientationImage = cv2.phase(gradientX,gradientY,angleInDegrees=True)
+        
+        for i in range(height):
+            for j in range(width):
+                orientationImage[i,j] = atan2d(gradientX[i,j], gradientY[i,j])
+
         
         
 
@@ -226,24 +249,12 @@ class HarrisKeypointDetector(KeypointDetector):
             the pixel value is the local maxima in
             its 7x7 neighborhood.
             '''
-        destImage = np.zeros_like(harrisImage, np.bool)
+        #destImage = np.zeros_like(harrisImage, np.bool)
 
-        corner_threshold = max(harrisImage.ravel()) * 0.1
-        bigHarris = harrisImage > corner_threshold*1
-        big_ones = bigHarris.nonzero()
-        big_coords = [(big_ones[0][c],big_ones[1][c]) for c in range(len(big_ones[0]))]
+        result = ndimage.maximum_filter(harrisImage, size = (7,7))
         
-        window_size = 7
-        height, width = harrisImage.shape[:2]
-        for i in range(height):
-            for j in range(width):
-                if (i,j) in big_coords:
-                    size = harrisImage[i][j]
-            
-                    this_window = harrisImage[i-window_size: i + window_size + 1, j - window_size : j + window_size + 1]
-            
-                    if size == this_window.max():
-                        destImage[i][j] = True
+        destImage = (harrisImage == result)
+        
         
         # TODO 2: Compute the local maxima image
         # TODO-BLOCK-BEGIN
