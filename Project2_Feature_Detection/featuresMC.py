@@ -310,10 +310,10 @@ class HarrisKeypointDetector(KeypointDetector):
                     continue
             
                 f = cv2.KeyPoint()
-                f.pt = (y,x)
-                f.size = harrisImage[y,x]
+                f.pt = (x,y)
+                f.response = harrisImage[y,x]
                 f.angle = orientationImage[y,x]
-                
+                f.size = 10.0
                 features.append(f)
                 
                 # TODO 3: Fill in feature f with location and orientation
