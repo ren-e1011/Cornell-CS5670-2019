@@ -160,78 +160,6 @@ class HarrisKeypointDetector(KeypointDetector):
         for i in range(height):
             for j in range(width):
                 orientationImage[i,j] = atan2d(gradientX[i,j], gradientY[i,j])
-
-        
-        
-
-#        height, width = srcImage.shape[:2]
-#
-#        H_scores = np.zeros((height, width))
-#        window_size = 5
-#        offset = (window_size - 1)/2
-#
-#
-#        for y in range(height):
-#            for x in range(width):
-#
-#                windowXX = Ixx[y - offset: y+ offset + 1, x - offset: x+ offset + 1]
-#                windowXY = Ixy[y - offset: y+ offset + 1, x - offset: x+ offset + 1]
-#                windowYY = Iyy[y - offset: y+ offset + 1, x - offset: x+ offset + 1]
-#
-#                windowXXsum = windowXX.sum()
-#                windowXYsum = windowXY.sum()
-#                windowYYsum = windowYY.sum()
-#
-#                det = windowXXsum*windowYYsum - (windowXYsum**2)
-#                trace = windowXXsum + windowYYsum
-#
-#                harrisImage[y,x] = det - 0.1*(trace**2)
-#
-
-        
-#        #I add the border around the image
-#        reflect = cv2.copyMakeBorder(srcImage,offset,offset,offset,offset,cv2.BORDER_REFLECT)
-#        #I do the Gaussian blur around the image
-#        gauss_blur = cv2.GaussianBlur(reflect,(5,5),sigmaX=0.5, sigmaY = 0, borderType=cv2.BORDER_REFLECT)
-#
-#        gradientX = cv2.Sobel(gauss_blur,cv2.CV_64F, 1,0, ksize = 3)
-#        gradientY = cv2.Sobel(gauss_blur, cv2.CV_64F,0,1, ksize = 3)
-#        angle = cv2.phase(gradientX,gradientY,angleInDegrees=True)
-#
-#        #Take the angles
-#        orientationImage = angle[offset: angle.shape[0] - offset ,offset: angle.shape[1] - offset]
-#        #print (orientationImage.shape)
-#
-#        #I feel like this is not allowed
-#        #orientationImage = angle
-#
-#        Ixx = gradientX*gradientX
-#        Ixy = gradientX*gradientY
-#        Iyy = gradientY*gradientY
-#
-#        height2, width2 = gauss_blur.shape[:2]
-#        h_scores = np.zeros((height2, width2))
-#        for x in range(offset, height2- offset):
-#            for y in range(offset, width2 - offset):
-#
-#                windowXX = Ixx[x - offset: x+ offset + 1, y - offset: y+ offset + 1]
-#                windowXY = Ixy[x - offset: x+ offset + 1, y - offset: y+ offset + 1]
-#                windowYY = Iyy[x - offset: x+ offset + 1, y - offset: y+ offset + 1]
-#
-#                windowXXsum = windowXX.sum()
-#                windowXYsum = windowXY.sum()
-#                windowYYsum = windowYY.sum()
-#
-#                det = windowXXsum*windowYYsum - (windowXYsum**2)
-#                trace = windowXXsum + windowYYsum
-#
-#                h_scores[x, y] = det - 0.1*(trace**2)
-#
-#        harrisImage = h_scores[offset: height + offset, offset: width + offset]
-#        orientationImage = angle[offset: height  + offset ,offset: width + offset]
-#
-        #raise Exception("TODO 1: in features.py not implemented")
-        # TODO-BLOCK-END
         
         # Save the harris image as harris.png for the website assignment
         self.saveHarrisImage(harrisImage, srcImage)
@@ -302,29 +230,21 @@ class HarrisKeypointDetector(KeypointDetector):
         # Loop through feature points in harrisMaxImage and fill in information
         # needed for descriptor computation for each point.
         # You need to fill x, y, and angle.
-        raise Exception("TODO 3: in features.py not implemented")
+        #raise Exception("TODO 3: in features.py not implemented")
                                             
         for y in range(height):
             for x in range(width):
-                if not harrisMaxImage[y, x]:
+                if not harrisMaxImage[y,x]:
                     continue
-            
-                f = cv2.KeyPoint()
-                f.pt = (y,x)
-                f.size = harrisImage[y,x]
-                f.angle = orientationImage[y,x]
                 
+                f = cv2.KeyPoint()
+                f.pt = (x,y)
+                f.response = harrisImage[y,x]
+                f.angle = orientationImage[y,x]
+                f.size = 10.0
                 features.append(f)
                 
-                # TODO 3: Fill in feature f with location and orientation
-                # data here. Set f.size to 10, f.pt to the (x,y) coordinate,
-                # f.angle to the orientation in degrees and f.response to
-                # the Harris score
-                # TODO-BLOCK-BEGIN
-                                            #raise Exception("TODO 3: in features.py not implemented")
-                # TODO-BLOCK-END
-                
-    
+  
         return features
 
 
@@ -373,33 +293,24 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
             '''
         image = image.astype(np.float32)
         image /= 255.
-        print(image)
         grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        print(grayImage)
         desc_window = 5
         desc = np.zeros((len(keypoints), desc_window * desc_window))
-        print('desc.shape',desc.shape)
-        
         for i, f in enumerate(keypoints):
             x, y = f.pt
             x, y = int(x), int(y)
-            # print(len(keypoints))
-            # print('Keypoint, x:',x,'y:',y)
+
             # TODO 4: The simple descriptor is a 5x5 window of intensities
             # sampled centered on the feature point. Store the descriptor
             # as a row-major vector. Treat pixels outside the image as zero.
             desc_pos = 0
-            for x_coord in range(x-desc_window//2,x+desc_window//2+1):
-                for y_coord in range(y-desc_window//2,y+desc_window//2+1): 
-                    # print('Img pos: (',x_coord,',',y_coord,')')
-                    if x_coord < 0 or x_coord > len(image)-1 or y_coord < 0 or y_coord > len(image[0])-1:
-                        desc[i,desc_pos] = 0
-                    else:
-                        desc[i,desc_pos] = grayImage[x_coord,y_coord]
-                    # print('point set at ('+str(i)+','+str(desc_pos)+'):'+str(grayImage[x_coord,y_coord]))
+            for x_coord in range(y-desc_window//2,y+desc_window//2+1):
+                for y_coord in range(x-desc_window//2,x+desc_window//2+1): 
+                    #if the limit exists
+                    if y_coord > 0 and y_coord < len(image) and x_coord > 0 and x_coord < len(image[0]):
+                        desc[i][desc_pos] = grayImage[x_coord,y_coord]
+                        
                     desc_pos +=1 
-
-        
         return desc
 
 #WORK IN PROGRESS
@@ -438,8 +349,24 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             desc_pos = 0
 
             # copy 40x40 window from grayscaled gauss prefiltered image
-            for x_coord in range(x-windowSize//2,x+windowSize//2+1):
-                for y_coord in range(y-windowSize//2,y+windowSize//2+1): 
+            grayImage_window = np.zeros([40,40])
+            grayImage_windowSize = 40
+
+            x_slice = np.arange(start=x-grayImage_windowSize//2,stop=x+grayImage_windowSize//2+1,step=1)
+            y_slice = np.arange(start=y-grayImage_windowSize//2,stop=y+grayImage_windowSize//2+1,step=1)
+
+            x_offset = 0
+            y_offset = 0
+
+            if x_slice[0] < 0:
+                x_offset = abs(x_slice[0])
+                x_slice = x_slice[x_offset:]
+            if y_slice[0] < 0:
+                y_offset = abs(y_slice[0])
+                y_slice = y_slice[y_offset:]
+
+            for enum,x_coord in enumerate(range(x-grayImage_windowSize//2,x+grayImage_windowSize//2+1)):
+                for y_coord in range(y-grayImage_windowSize//2,y+grayImage_windowSize//2+1): 
                     # print('Img pos: (',x_coord,',',y_coord,')')
                     if x_coord < 0 or x_coord > len(image)-1 or y_coord < 0 or y_coord > len(image[0])-1:
                         desc[i,desc_pos] = 0
