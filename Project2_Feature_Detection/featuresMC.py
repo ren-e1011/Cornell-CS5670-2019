@@ -306,9 +306,9 @@ class HarrisKeypointDetector(KeypointDetector):
                                             
         for y in range(height):
             for x in range(width):
-                if not harrisMaxImage[y, x]:
+                if not harrisMaxImage[y,x]:
                     continue
-            
+                                                            
                 f = cv2.KeyPoint()
                 f.pt = (x,y)
                 f.response = harrisImage[y,x]
