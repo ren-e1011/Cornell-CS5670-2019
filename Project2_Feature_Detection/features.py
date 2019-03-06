@@ -338,7 +338,6 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
 
         return desc
 
-#WORK IN PROGRESS
 class MOPSFeatureDescriptor(FeatureDescriptor):
     # TODO: Implement parts of this function
     def describeFeatures(self, image, keypoints):
@@ -364,8 +363,6 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
         for i, f in enumerate(keypoints):
             
             x, y = f.pt
-            # x, y = int(x), int(y)
-            # print(x,y)
             # TODO 5: Compute the transform as described by the feature
             # location/orientation. You will need to compute the transform
             # from each pixel in the 40x40 rotated window surrounding
@@ -440,121 +437,6 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
                     desc[i][desc_pos] = destImage[row_coord,col_coord]
                     desc_pos += 1
         return desc
-
-class MOPSFeatureDescriptor_legacy(FeatureDescriptor):
-    
-    # TODO: Implement parts of this function
-    def describeFeatures(self, image, keypoints):
-        '''
-            Input:
-            image -- BGR image with values between [0, 255]
-            keypoints -- the detected features, we have to compute the feature
-            descriptors at the specified coordinates
-            Output:
-            desc -- K x W^2 numpy array, where K is the number of keypoints
-            and W is the window size
-            '''
-        image = image.astype(np.float32)
-        image /= 255.
-        # This image represents the window around the feature you need to
-        # compute to store as the feature descriptor (row-major)
-        windowSize = 8
-        desc = np.zeros((len(keypoints), windowSize * windowSize))
-
-        grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        grayImage = ndimage.gaussian_filter(grayImage, 0.5)
-
-        
-        for i, f in enumerate(keypoints):
-            # TODO 5: Compute the transform as described by the feature
-            # location/orientation. You will need to compute the transform
-            # from each pixel in the 40x40 rotated window surrounding
-            # the feature to the appropriate pixels in the 8x8 feature
-            # descriptor image.
-
-            x, y = f.pt
-            x, y = int(x), int(y)
-            desc_pos = 0
-
-            # copy 40x40 ORIENTED window from grayscaled gauss prefiltered image
-            # 40 x 40 window around POI
-            grayImage_windowSize = 40
-            grayImage_window = np.zeros([40,40])
-
-
-            col_slice = np.arange(start=x-grayImage_windowSize//2,stop=x+grayImage_windowSize//2+1,step=1)
-            row_slice = np.arange(start=y-grayImage_windowSize//2,stop=y+grayImage_windowSize//2+1,step=1)
-
-            col_offset = 0
-            row_offset = 0
-
-            col_stop = len(col_slice) 
-            row_stop = len(row_slice) 
-
-            if col_slice[0] < 0:
-                col_offset = abs(col_slice[0])
-                col_slice = col_slice[col_offset:]
-            #len -1 for 0-based indexing
-            if col_slice[-1] > len(grayImage[0])-1:
-                #over-bloat, negative index, will peel off last negative ix elements 
-                col_stop = len(grayImage[0])-col_slice[-1]
-
-            if row_slice[0] < 0:
-                row_offset = abs(row_slice[0])
-                row_slice = row_slice[row_offset:]
-            #len -1 for 0-based indexing
-            if row_slice[-1] > len(grayImage)-1:
-                row_stop = len(grayImage)-row_slice[-1]
-
-            grayImage_window[row_offset:row_stop,col_offset:col_stop] = grayImage[row_slice[row_offset:row_stop],col_slice[col_offset:col_stop]]
-
-
-
-            # for row_coord in range(y-desc_window//2,y+desc_window//2+1):
-            #     for col_coord in range(x-desc_window//2,x+desc_window//2+1): 
-            #         #if the limit exists
-            #         if col_coord > 0 and col_coord < len(image) and row_coord > 0 and row_coord < len(image[0]):
-            #             desc[i][desc_pos] = grayImage[row_coord,col_coord]
-
-            #USE WARP AFFINE
-
-            # shrink to 1/5, 8x8
-            desc_ix = 0
-            for row in grayImage_window:
-                for col in grayImage_window[row]:
-                    if row % 5 == 0:
-                        desc[row,desc_ix] = grayImage_window[row,col]
-                        desc_ix += 1
-
-            
-            #Rotate pixels to horizontal
-
-            # Intensity normalize the window: subtract the mean, divide by the SD
-            windowMean = np.mean(grayImage_window)
-            windowSD = np.std(grayImage_window)
-            # If the standard deviation is very close to zero (less than 10**-5 in magnitude) then you should just return an all-zeros vector to avoid a divide by zero error
-            if windowSD < 10**-5: return np.zeros(grayImage_window.shape)
-            
-            grayImage_window = (grayImage_window - windowMean)/windowSD
-
-            #WAT
-            transMx = np.zeros((2, 3))
-            
-            
-            # Call the warp affine function to do the mapping
-            # It expects a 2x3 matrix
-            destImage = cv2.warpAffine(grayImage, transMx,
-                                       (windowSize, windowSize), flags=cv2.INTER_LINEAR)
-                                       
-                                       # TODO 6: Normalize the descriptor to have zero mean and unit
-                                       # variance. If the variance is zero then set the descriptor
-                                       # vector to zero. Lastly, write the vector to desc.
-                                       # TODO-BLOCK-BEGIN
-            raise Exception("TODO 6: in features.py not implemented")
-        # TODO-BLOCK-END
-        
-        return desc
-
 
 class ORBFeatureDescriptor(KeypointDetector):
     def describeFeatures(self, image, keypoints):
@@ -659,6 +541,7 @@ class SSDFeatureMatcher(FeatureMatcher):
             trainIdx: The index of the feature in the second image
             distance: The distance between the two features
             '''
+
         matches = []
         # feature count = n
         assert desc1.ndim == 2
@@ -670,14 +553,16 @@ class SSDFeatureMatcher(FeatureMatcher):
         if desc1.shape[0] == 0 or desc2.shape[0] == 0:
             return []
         
-        # TODO 7: Perform simple feature matching.  This uses the SSD
-        # distance between two feature vectors, and matches a feature in
-        # the first image with the closest feature in the second image.
-        # Note: multiple features from the first image may match the same
-        # feature in the second image.
-        # TODO-BLOCK-BEGIN
-        raise Exception("TODO 7: in features.py not implemented")
-        # TODO-BLOCK-END
+        dist = scipy.spatial.distance.cdist(desc1, desc2, metric = 'euclidean')
+        index = np.argmin(dist, axis = 1)
+        
+        for i in range(desc1.shape[0]):
+            m = cv2.DMatch()
+            m.queryIdx = i
+            m.trainIdx = index[i]
+            m.distance = dist[i][index[i]]
+            
+            matches.append(m)
         
         return matches
 
@@ -710,16 +595,16 @@ class RatioFeatureMatcher(FeatureMatcher):
         if desc1.shape[0] == 0 or desc2.shape[0] == 0:
             return []
         
-        # TODO 8: Perform ratio feature matching.
-        # This uses the ratio of the SSD distance of the two best matches
-        # and matches a feature in the first image with the closest feature in the
-        # second image.
-        # Note: multiple features from the first image may match the same
-        # feature in the second image.
-        # You don't need to threshold matches in this function
-        # TODO-BLOCK-BEGIN
-        raise Exception("TODO 8: in features.py not implemented")
-        # TODO-BLOCK-END
+        dist = scipy.spatial.distance.cdist(desc1, desc2, metric = 'euclidean')
+        index = np.argmin(dist, axis = 1)
+        second_index = np.argsort(dist, axis=1)[:,1]
+        for i in range(desc1.shape[0]):
+            m = cv2.DMatch()
+            m.queryIdx = i
+            m.trainIdx = index[i]
+            m.distance = (dist[i][index[i]])/(dist[i][second_index[i]])
+            
+            matches.append(m)
         
         return matches
 
