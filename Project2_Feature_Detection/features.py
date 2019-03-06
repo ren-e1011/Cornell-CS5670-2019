@@ -291,29 +291,51 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
             Output:
             desc -- K x 25 numpy array, where K is the number of keypoints
             '''
+
+        # image = image.astype(np.float32)
+        # image /= 255.
+        # grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        # desc_window = 5
+        # desc = np.zeros((len(keypoints), desc_window * desc_window))
+        # for i, f in enumerate(keypoints):
+        #     x, y = f.pt
+        #     x, y = int(x), int(y)
+
+        #     # TODO 4: The simple descriptor is a 5x5 window of intensities
+        #     # sampled centered on the feature point. Store the descriptor
+        #     # as a row-major vector. Treat pixels outside the image as zero.
+
+        #     #consider points' rotation??
+
+        #     desc_pos = 0
+        #     for row_coord in range(y-desc_window//2,y+desc_window//2+1):
+        #         for col_coord in range(x-desc_window//2,x+desc_window//2+1): 
+        #             #if the limit exists
+        #             if col_coord > 0 and col_coord < len(image) and row_coord > 0 and row_coord < len(image[0]):
+        #                 desc[i][desc_pos] = grayImage[row_coord,col_coord]
+                        
+        #             desc_pos +=1 
+        # return desc
+
         image = image.astype(np.float32)
         image /= 255.
         grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         desc_window = 5
+        offset = (desc_window - 1)/2
         desc = np.zeros((len(keypoints), desc_window * desc_window))
         for i, f in enumerate(keypoints):
-            x, y = f.pt
-            x, y = int(x), int(y)
+                x, y = f.pt
+                x, y = int(x), int(y)
+                                    
+                desc_pos = 0
+                for x_coord in range(y-offset,y+offset+1):
+                        for y_coord in range(x-offset, x+ offset + 1):
+                                #if the limit exists
+                            if inbounds([grayImage.shape[0], grayImage.shape[1]], [x_coord, y_coord]):
+                                desc[i][desc_pos] = grayImage[x_coord,y_coord]
 
-            # TODO 4: The simple descriptor is a 5x5 window of intensities
-            # sampled centered on the feature point. Store the descriptor
-            # as a row-major vector. Treat pixels outside the image as zero.
+                            desc_pos +=1
 
-            #consider points' rotation??
-
-            desc_pos = 0
-            for row_coord in range(y-desc_window//2,y+desc_window//2+1):
-                for col_coord in range(x-desc_window//2,x+desc_window//2+1): 
-                    #if the limit exists
-                    if col_coord > 0 and col_coord < len(image) and row_coord > 0 and row_coord < len(image[0]):
-                        desc[i][desc_pos] = grayImage[row_coord,col_coord]
-                        
-                    desc_pos +=1 
         return desc
 
 #WORK IN PROGRESS
@@ -329,8 +351,6 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             desc -- K x W^2 numpy array, where K is the number of keypoints
                     and W is the window size
         '''
-        #FOR TESTING
-        too_small = 0
 
         image = image.astype(np.float32)
         image /= 255.
@@ -362,16 +382,7 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
                 [0,1,-y],
                 [0,0,1]])
 
-            # T1 = np.array([
-            #     [1,0,-x],
-            #     [0,1,-y],
-            #     [0,0,1]])
-
             # rotate horizontally [inv rotate by theta]
-            # R = np.array([
-            #     [-np.sin(theta),np.cos(theta),0],
-            #     [np.cos(theta),np.sin(theta),0],
-            #     [0,0,1]])
 
             R = np.array([
                 [np.cos(theta),-np.sin(theta),0],
@@ -394,10 +405,8 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             #Left-multiplied transformations are combined right-to-left so the transformation matrix is the matrix product T2 S R T1. The figures below illustrate the sequence.
             # F = T2*S*R*T1
             F = np.dot(np.dot(np.dot(T2,S),R),T1)
-            # transMx = np.zeros((2, 3))
 
             # warp affine does not require affine row
-            # transMx = F[:-1]
             transMx = F[:-1]
 
             # Call the warp affine function to do the mapping
@@ -405,14 +414,12 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             destImage = cv2.warpAffine(grayImage, transMx,
                 (windowSize, windowSize), flags=cv2.INTER_LINEAR)
 
-            # print(destImage)
             # Intensity normalize the window: subtract the mean, divide by the SD
             windowMean = np.mean(destImage)
             windowSD = np.std(destImage)
             # If the standard deviation is very close to zero (less than 10**-5 in magnitude) then you should just return an all-zeros vector to avoid a divide by zero error
            
             if windowSD < 10**-5: 
-                too_small += 1
                 destImage = np.zeros(destImage.shape)
             
             else: 
@@ -432,10 +439,6 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
                     # if col_coord > 0 and col_coord < len(image) and row_coord > 0 and row_coord < len(image[0]):
                     desc[i][desc_pos] = destImage[row_coord,col_coord]
                     desc_pos += 1
-        # print(desc)
-            # desc[i] = destImage
-        print('num zero vector returns',too_small)
-        print('size descriptors',len(desc))
         return desc
 
 class MOPSFeatureDescriptor_legacy(FeatureDescriptor):
