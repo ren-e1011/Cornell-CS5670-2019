@@ -303,18 +303,143 @@ class SimpleFeatureDescriptor(FeatureDescriptor):
             # TODO 4: The simple descriptor is a 5x5 window of intensities
             # sampled centered on the feature point. Store the descriptor
             # as a row-major vector. Treat pixels outside the image as zero.
+
+            #consider points' rotation??
+
             desc_pos = 0
-            for x_coord in range(y-desc_window//2,y+desc_window//2+1):
-                for y_coord in range(x-desc_window//2,x+desc_window//2+1): 
+            for row_coord in range(y-desc_window//2,y+desc_window//2+1):
+                for col_coord in range(x-desc_window//2,x+desc_window//2+1): 
                     #if the limit exists
-                    if y_coord > 0 and y_coord < len(image) and x_coord > 0 and x_coord < len(image[0]):
-                        desc[i][desc_pos] = grayImage[x_coord,y_coord]
+                    if col_coord > 0 and col_coord < len(image) and row_coord > 0 and row_coord < len(image[0]):
+                        desc[i][desc_pos] = grayImage[row_coord,col_coord]
                         
                     desc_pos +=1 
         return desc
 
 #WORK IN PROGRESS
 class MOPSFeatureDescriptor(FeatureDescriptor):
+    # TODO: Implement parts of this function
+    def describeFeatures(self, image, keypoints):
+        '''
+        Input:
+            image -- BGR image with values between [0, 255]
+            keypoints -- the detected features, we have to compute the feature
+            descriptors at the specified coordinates
+        Output:
+            desc -- K x W^2 numpy array, where K is the number of keypoints
+                    and W is the window size
+        '''
+        #FOR TESTING
+        too_small = 0
+
+        image = image.astype(np.float32)
+        image /= 255.
+        # This image represents the window around the feature you need to
+        # compute to store as the feature descriptor (row-major)
+        windowSize = 8
+        desc = np.zeros((len(keypoints), windowSize * windowSize))
+        grayImage = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        grayImage = ndimage.gaussian_filter(grayImage, 0.5)
+
+        for i, f in enumerate(keypoints):
+            
+            x, y = f.pt
+            # x, y = int(x), int(y)
+            # print(x,y)
+            # TODO 5: Compute the transform as described by the feature
+            # location/orientation. You will need to compute the transform
+            # from each pixel in the 40x40 rotated window surrounding
+            # the feature to the appropriate pixels in the 8x8 feature
+            # descriptor image.
+
+            #in rad
+            # theta = f.angle* np.pi / 180
+            theta = math.radians(-f.angle)
+            
+            # move from keypoint center to be centered at origin: left x + windowSize//2, up y + windowSize//2
+            T1 = np.array([
+                [1,0,-x],
+                [0,1,-y],
+                [0,0,1]])
+
+            # T1 = np.array([
+            #     [1,0,-x],
+            #     [0,1,-y],
+            #     [0,0,1]])
+
+            # rotate horizontally [inv rotate by theta]
+            # R = np.array([
+            #     [-np.sin(theta),np.cos(theta),0],
+            #     [np.cos(theta),np.sin(theta),0],
+            #     [0,0,1]])
+
+            R = np.array([
+                [np.cos(theta),-np.sin(theta),0],
+                [np.sin(theta),np.cos(theta),0],
+                [0,0,1]
+            ])
+
+            # scale (gauss blurred img) to 1/5
+            S = np.array([
+                [.2,0,0],
+                [0,.2,0],
+                [0,0,1]])
+
+            #push to be upper left aligned with origin
+            T2 = np.array([
+                [1,0,+(windowSize//2)],
+                [0,1,(windowSize//2)],
+                [0,0,1]
+                ])
+            #Left-multiplied transformations are combined right-to-left so the transformation matrix is the matrix product T2 S R T1. The figures below illustrate the sequence.
+            # F = T2*S*R*T1
+            F = np.dot(np.dot(np.dot(T2,S),R),T1)
+            # transMx = np.zeros((2, 3))
+
+            # warp affine does not require affine row
+            # transMx = F[:-1]
+            transMx = F[:-1]
+
+            # Call the warp affine function to do the mapping
+            # It expects a 2x3 matrix
+            destImage = cv2.warpAffine(grayImage, transMx,
+                (windowSize, windowSize), flags=cv2.INTER_LINEAR)
+
+            # print(destImage)
+            # Intensity normalize the window: subtract the mean, divide by the SD
+            windowMean = np.mean(destImage)
+            windowSD = np.std(destImage)
+            # If the standard deviation is very close to zero (less than 10**-5 in magnitude) then you should just return an all-zeros vector to avoid a divide by zero error
+           
+            if windowSD < 10**-5: 
+                too_small += 1
+                destImage = np.zeros(destImage.shape)
+            
+            else: 
+                destImage = (destImage - windowMean)/windowSD
+
+            # TODO 6: Normalize the descriptor to have zero mean and unit
+            # variance. If the variance is zero then set the descriptor
+            # vector to zero. Lastly, write the vector to desc.
+            # TODO-BLOCK-BEGIN
+            # raise Exception("TODO 6: in features.py not implemented")
+            # TODO-BLOCK-END
+            # print(destImage.shape) 
+            desc_pos = 0
+            for row_coord in range(len(destImage)):
+                for col_coord in range(len(destImage[0])): 
+                    #if the limit exists
+                    # if col_coord > 0 and col_coord < len(image) and row_coord > 0 and row_coord < len(image[0]):
+                    desc[i][desc_pos] = destImage[row_coord,col_coord]
+                    desc_pos += 1
+        # print(desc)
+            # desc[i] = destImage
+        print('num zero vector returns',too_small)
+        print('size descriptors',len(desc))
+        return desc
+
+class MOPSFeatureDescriptor_legacy(FeatureDescriptor):
+    
     # TODO: Implement parts of this function
     def describeFeatures(self, image, keypoints):
         '''
@@ -348,43 +473,70 @@ class MOPSFeatureDescriptor(FeatureDescriptor):
             x, y = int(x), int(y)
             desc_pos = 0
 
-            # copy 40x40 window from grayscaled gauss prefiltered image
-            grayImage_window = np.zeros([40,40])
+            # copy 40x40 ORIENTED window from grayscaled gauss prefiltered image
+            # 40 x 40 window around POI
             grayImage_windowSize = 40
+            grayImage_window = np.zeros([40,40])
 
-            x_slice = np.arange(start=x-grayImage_windowSize//2,stop=x+grayImage_windowSize//2+1,step=1)
-            y_slice = np.arange(start=y-grayImage_windowSize//2,stop=y+grayImage_windowSize//2+1,step=1)
 
-            x_offset = 0
-            y_offset = 0
+            col_slice = np.arange(start=x-grayImage_windowSize//2,stop=x+grayImage_windowSize//2+1,step=1)
+            row_slice = np.arange(start=y-grayImage_windowSize//2,stop=y+grayImage_windowSize//2+1,step=1)
 
-            if x_slice[0] < 0:
-                x_offset = abs(x_slice[0])
-                x_slice = x_slice[x_offset:]
-            if y_slice[0] < 0:
-                y_offset = abs(y_slice[0])
-                y_slice = y_slice[y_offset:]
+            col_offset = 0
+            row_offset = 0
 
-            for enum,x_coord in enumerate(range(x-grayImage_windowSize//2,x+grayImage_windowSize//2+1)):
-                for y_coord in range(y-grayImage_windowSize//2,y+grayImage_windowSize//2+1): 
-                    # print('Img pos: (',x_coord,',',y_coord,')')
-                    if x_coord < 0 or x_coord > len(image)-1 or y_coord < 0 or y_coord > len(image[0])-1:
-                        desc[i,desc_pos] = 0
-                    else:
-                        desc[i,desc_pos] = grayImage[x_coord,y_coord]
-                    # print('point set at ('+str(i)+','+str(desc_pos)+'):'+str(grayImage[x_coord,y_coord]))
-                    desc_pos +=1 
+            col_stop = len(col_slice) 
+            row_stop = len(row_slice) 
 
-            transMx = np.zeros((2, 3))
-            
-             
+            if col_slice[0] < 0:
+                col_offset = abs(col_slice[0])
+                col_slice = col_slice[col_offset:]
+            #len -1 for 0-based indexing
+            if col_slice[-1] > len(grayImage[0])-1:
+                #over-bloat, negative index, will peel off last negative ix elements 
+                col_stop = len(grayImage[0])-col_slice[-1]
+
+            if row_slice[0] < 0:
+                row_offset = abs(row_slice[0])
+                row_slice = row_slice[row_offset:]
+            #len -1 for 0-based indexing
+            if row_slice[-1] > len(grayImage)-1:
+                row_stop = len(grayImage)-row_slice[-1]
+
+            grayImage_window[row_offset:row_stop,col_offset:col_stop] = grayImage[row_slice[row_offset:row_stop],col_slice[col_offset:col_stop]]
+
+
+
+            # for row_coord in range(y-desc_window//2,y+desc_window//2+1):
+            #     for col_coord in range(x-desc_window//2,x+desc_window//2+1): 
+            #         #if the limit exists
+            #         if col_coord > 0 and col_coord < len(image) and row_coord > 0 and row_coord < len(image[0]):
+            #             desc[i][desc_pos] = grayImage[row_coord,col_coord]
+
+            #USE WARP AFFINE
 
             # shrink to 1/5, 8x8
-            # Intensity normalize the window: subtract the mean, divide by the SD
+            desc_ix = 0
+            for row in grayImage_window:
+                for col in grayImage_window[row]:
+                    if row % 5 == 0:
+                        desc[row,desc_ix] = grayImage_window[row,col]
+                        desc_ix += 1
 
-            # TODO-BLOCK-BEGIN
-            raise Exception("TODO 5: in features.py not implemented")
-            # TODO-BLOCK-END
+            
+            #Rotate pixels to horizontal
+
+            # Intensity normalize the window: subtract the mean, divide by the SD
+            windowMean = np.mean(grayImage_window)
+            windowSD = np.std(grayImage_window)
+            # If the standard deviation is very close to zero (less than 10**-5 in magnitude) then you should just return an all-zeros vector to avoid a divide by zero error
+            if windowSD < 10**-5: return np.zeros(grayImage_window.shape)
+            
+            grayImage_window = (grayImage_window - windowMean)/windowSD
+
+            #WAT
+            transMx = np.zeros((2, 3))
+            
             
             # Call the warp affine function to do the mapping
             # It expects a 2x3 matrix
