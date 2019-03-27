@@ -55,16 +55,25 @@ def try_this(todo, run, truth, compare, *args, **kargs):
         traceback.print_exc()
         print("TODO {} threw an exception, see exception above".format(todo))
         return
+<<<<<<< HEAD
 #print (truth)
     if type(output) is list or type(output) is tuple:
         for i in range(len(output)):
             if not compare(output[i], truth[i], **kargs):
             
+=======
+    if type(output) is list or type(output) is tuple:
+        for i in range(len(output)):
+            if not compare(output[i], truth[i], **kargs):
+>>>>>>> origin/master
                 print("TODO {} doesn't pass test: {}".format(todo, i))
                 failed+=1
     else:
         if not compare(output, truth, **kargs):
+<<<<<<< HEAD
             
+=======
+>>>>>>> origin/master
             print("TODO {} doesn't pass test".format(todo))
             failed+=1
     return failed
@@ -108,7 +117,10 @@ This is not the script used by the autograder.
 loaded = np.load('resources/arrays.npz')
 d = unpickle_cv2(loaded['d_proc'])
 
+<<<<<<< HEAD
 
+=======
+>>>>>>> origin/master
 try_this(1, HKD.computeHarrisValues, [loaded['a'],loaded['b']], compare_array, grayImage)
 
 # patch HKD so future tests won't fail because the last test failed
