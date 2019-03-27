@@ -202,7 +202,7 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
             p1 = (p1/p1[2])[:2]
             p2 = f2[matches[i].trainIdx].pt
         else:
-            p2 = np.array([f2[matches[i].trainIdx.pt[0], f2[matches[i].trainIdx].pt[1]], 1])
+            p2 = np.array([f2[matches[i].trainIdx].pt[0], f2[matches[i].trainIdx].pt[1], 1])
         
         if np.linalg.norm(p1 - p2) <= RANSACthresh:
             inlier_indices.append(i)
