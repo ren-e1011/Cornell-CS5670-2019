@@ -112,11 +112,18 @@ def getAccSize(ipv):
         if channels == -1:
             channels = c
             width = w
-
+        
+        
+        this_min_x, this_min_y, this_max_x, this_max_y = imageBoundingBox(img, M)
+        
+        minX = min(this_min_x, minX)
+        minY = min(this_min_y, minY)
+        maxX = max(this_max_x, maxX)
+        maxY = max(this_max_y, maxY)
         # BEGIN TODO 9
         # add some code here to update minX, ..., maxY
         #TODO-BLOCK-BEGIN
-        raise Exception("TODO in blend.py not implemented")
+#raise Exception("TODO in blend.py not implemented")
         #TODO-BLOCK-END
         # END TODO
 
