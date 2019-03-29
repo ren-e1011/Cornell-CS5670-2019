@@ -31,15 +31,28 @@ def imageBoundingBox(img, M):
 #TODO 8
     #TODO-BLOCK-BEGIN
     # Create a vector of coordinates
-    
-
-    img_shape = img.shape
-    pxs =np.array([M.dot(np.array([x,y,1]).transpose()) for x in range(img.shape[0]) for y in range(img.shape[1])])
-    norm_pxs = [np.array(px/px[2]) for px in pxs]
-    minX,minY,minZ = np.amin(norm_pxs,axis=0)
-    maxX,maxY,maxZ= np.amax(norm_pxs,axis=0)
+    extreme_points = np.array([[0, 0, img.shape[0]-1, img.shape[0]-1],
+                               [0, img.shape[1]-1, 0, img.shape[1]-1],
+                               [1, 1, 1, 1]])
+    max_points = np.matmul(M, extreme_points)
+    max_points[:, 0] /= max_points[2, 0]
+    max_points[:, 1] /= max_points[2, 1]
+    max_points[:, 2] /= max_points[2, 2]
+    max_points[:, 3] /= max_points[2, 3]
+    minX = np.min(max_points[0, :])
+    maxX = np.max(max_points[0, :])
+    minY = np.min(max_points[1, :])
+    maxY = np.max(max_points[1, :])
 
     return int(minX), int(minY), int(maxX), int(maxY)
+
+    # img_shape = img.shape
+    # pxs =np.array([M.dot(np.array([x,y,1]).transpose()) for x in range(img.shape[0]) for y in range(img.shape[1])])
+    # norm_pxs = [np.array(px/px[2]) for px in pxs]
+    # minX,minY,minZ = np.amin(norm_pxs,axis=0)
+    # maxX,maxY,maxZ= np.amax(norm_pxs,axis=0)
+
+    # return int(minX), int(minY), int(maxX), int(maxY)
 
 
 def accumulateBlend(img, acc, M, blendWidth):
@@ -67,7 +80,9 @@ def accumulateBlend(img, acc, M, blendWidth):
       #alpha: line between (0,1) and (blendWidth-1,0)points: at 0 want full val, at blendwidth size want zero
       # -1/(blendWidth-1)*np.arange(blendWidth)+1: 
       # alpha decreasing function
-    alpha = 1/(1-blendWidth)*np.arange(blendWidth)+1
+    alpha = -(1.0/(blendWidth-1))*np.arange(blendWidth, dtype=np.float32)+1
+
+    # alpha = 1.0/(1-blendWidth)*np.arange(blendWidth,dtype=np.float32)+1
       # blending_matrix 
       # L: reversed alphas [increasing] up until blendWidth
     blendMatrix[:,:blendWidth] = blendMatrix[:,:blendWidth]*alpha[::-1]
@@ -80,17 +95,16 @@ def accumulateBlend(img, acc, M, blendWidth):
     out_matrix = np.ones((img.shape[0],img.shape[1],img.shape[2]+1))
 
     
-    out_matrix[:,:,-1] = blendMatrix
+    out_matrix[:,:,3] = blendMatrix
     print(np.array_equal(out_matrix[:,:,3],blendMatrix))
       # warp perspective it back acc[::i] set equal to alpha matrix dim [::-1]*M*alpha_mat.shape(0),alpha_mat.shape(1)
     #UNSURE
     for channel in range(img.shape[2]):
-        out_matrix[:,:,channel] = cv2.warpPerspective(img[:,:,channel],M_inv,(acc.shape[1],acc.shape[0]),flags=(cv2.INTER_NEAREST + cv2.WARP_INVERSE_MAP))
-
-    out_matrix[:,:,:3] = out_matrix[:,:,:3] * blendMatrix
+        out_matrix[:,:,channel] = img[:,:,channel]*blendMatrix
+        acc[:,:,channel] += cv2.warpPerspective(out_matrix[:,:,channel],M_inv,(acc.shape[1],acc.shape[0]))
 
     # acc = np.array([acc[r,c] + out_matrix[r,c] for r in range(out_matrix.shape(0)) for c in range(out_matrix.shape(1))])
-    acc = out_matrix
+    # acc = out_matrix
     
     # acc_map = [np.array(M_inv.dot([x,y,1])) for x in range(img.shape[0]) for y in range(img.shape[1])]
     # norm_acc_map = np.array([px/px[2] for px in acc_map])
@@ -115,7 +129,11 @@ def normalizeBlend(acc):
          img: image with r,g,b values of acc normalized
     """
     print('acc_shape',acc.shape)
-    acc[acc[:,:,3] != 0] /= np.array(acc[:,:,3])
+    out_shape = (acc.shape[0],acc.shape[1],3)
+    # np.reshape((acc[acc[:,:,3] != 0] /= acc[:,:,3][acc[:,:,3] !=0]),out_shape)
+    #REFACTOR
+    acc[acc[:, :, 3] !=
+        0] /= np.array([list(acc[acc[:, :, 3] != 0][:, 3])]*4).T
     acc[acc[:,:,3] == 0] = 0
     # acc[:,:,3] = 1
     #if value is not zero:
@@ -128,6 +146,7 @@ def normalizeBlend(acc):
     #homography-ish
     #set last channel equal 1, effectively acc[acc[:,:,3]==0] = 0
     return np.array(acc[:,:,:3],dtype=np.uint8)
+    # return acc
     # BEGIN TODO 11
     # fill in this routine..
     #TODO-BLOCK-BEGIN
@@ -294,5 +313,5 @@ def blendImages(ipv, blendWidth, is360=False, A_out=None):
     # Warp and crop the composite
     croppedImage = cv2.warpPerspective(compImage, A, (outputWidth, accHeight), flags=cv2.INTER_LINEAR)
 
-    return croppedImage
+    return croppedImage.astype(np.uint8)
 
