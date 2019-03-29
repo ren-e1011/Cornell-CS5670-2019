@@ -80,6 +80,15 @@ def computeHomography(f1, f2, matches, A_out=None):
 
     return H
 
+#made a function to do the computation of a translation
+def computeTranslation(f1, f2, matches):
+    M = np.eye(3)
+    match = matches[0]
+    x, y = np.array(f2[match.trainIdx].pt) - np.array(f1[match.queryIdx].pt)
+    M[0,2] = x
+    M[1,2] = y
+    return M
+
 def alignPair(f1, f2, matches, m, nRANSAC, RANSACthresh):
     '''
     Input:
@@ -92,7 +101,6 @@ def alignPair(f1, f2, matches, m, nRANSAC, RANSACthresh):
         m -- MotionModel (eTranslate, eHomography)
         nRANSAC -- number of RANSAC iterations
         RANSACthresh -- RANSAC distance threshold
-
     Output:
         M -- inter-image transformation matrix
         Repeat for nRANSAC iterations:
@@ -115,10 +123,43 @@ def alignPair(f1, f2, matches, m, nRANSAC, RANSACthresh):
     #This function should also call get_inliers and, at the end,
     #least_squares_fit.
     #TODO-BLOCK-BEGIN
-    raise Exception("TODO in alignment.py not implemented")
+    
+    
+    max_inliers = []
+    
+    if m == eTranslate:
+        match_count = 1
+    
+    else:
+        match_count = 4
+    
+    
+    for i in range(nRANSAC):
+        these_matches = []
+        for j in range(match_count):
+            randomInt = random.randint(0, len(matches) - 1)
+            these_matches.append(matches[randomInt])
+
+    if m == eTranslate:
+        model = computeTranslation(f1, f2, these_matches)
+    else:
+        model = computeHomography(f1,f2, these_matches)
+
+
+    these_inliers = getInliers(f1, f2, matches, model, RANSACthresh)
+
+    #isnt this always?
+    if len(max_inliers) < len(these_inliers):
+        max_inliers = these_inliers
+    
+    if len(max_inliers) > 0:
+        M = leastSquaresFit(f1, f2, matches, m, max_inliers)
+        return M
+    return alignPair(f1,f2,matches, m, nRANSAC, RANSACthresh)
+
+#raise Exception("TODO in alignment.py not implemented")
     #TODO-BLOCK-END
     #END TODO
-    return M
 
 def getInliers(f1, f2, matches, M, RANSACthresh):
     '''
@@ -131,10 +172,8 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
             DMatch.distance: The distance between the two features
         M -- inter-image transformation matrix
         RANSACthresh -- RANSAC distance threshold
-
     Output:
         inlier_indices -- inlier match indices (indexes into 'matches')
-
         Transform the matched features in f1 by M.
         Store the match index of features in f1 for which the transformed
         feature is within Euclidean distance RANSACthresh of its match
@@ -150,9 +189,20 @@ def getInliers(f1, f2, matches, M, RANSACthresh):
         #by M, is within RANSACthresh of its match in f2.
         #If so, append i to inliers
         #TODO-BLOCK-BEGIN
-        raise Exception("TODO in alignment.py not implemented")
+        #raise Exception("TODO in alignment.py not implemented")
         #TODO-BLOCK-END
         #END TODO
+        
+        p1 = f1[matches[i].queryIdx].pt
+        p1 = np.dot(M, np.array([p1[0], p1[1],1]))
+        if p1[2]!=0:
+            p1 = (p1/p1[2])[:2]
+            p2 = f2[matches[i].trainIdx].pt
+        else:
+            p2 = np.array([f2[matches[i].trainIdx].pt[0], f2[matches[i].trainIdx].pt[1], 1])
+        
+        if np.linalg.norm(p1 - p2) <= RANSACthresh:
+            inlier_indices.append(i)
 
     return inlier_indices
 
@@ -167,10 +217,8 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
             DMatch.distance: The distance between the two features
         m -- MotionModel (eTranslate, eHomography)
         inlier_indices -- inlier match indices (indexes into 'matches')
-
     Output:
         M - transformation matrix
-
         Compute the transformation matrix from f1 to f2 using only the
         inliers and return it.
     '''
@@ -195,7 +243,12 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
             #Use this loop to compute the average translation vector
             #over all inliers.
             #TODO-BLOCK-BEGIN
-            raise Exception("TODO in alignment.py not implemented")
+            #raise Exception("TODO in alignment.py not implemented")
+            
+            translation_vectors = computeTranslation(f1, f2, matches[inlier_indices[i]], matches[inlier_indices[i]])
+            u += translation_vectors[0, 2]
+            v += translation_vectors[1, 2]
+        
             #TODO-BLOCK-END
             #END TODO
 
@@ -210,7 +263,9 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
         #Compute a homography M using all inliers.
         #This should call computeHomography.
         #TODO-BLOCK-BEGIN
-        raise Exception("TODO in alignment.py not implemented")
+        inlier_matches = [matches[i] for i in inlier_indices]
+        M = computeHomography(f1,f2,inlier_matches)
+#raise Exception("TODO in alignment.py not implemented")
         #TODO-BLOCK-END
         #END TODO
 
@@ -218,4 +273,3 @@ def leastSquaresFit(f1, f2, matches, m, inlier_indices):
         raise Exception("Error: Invalid motion model.")
 
     return M
-

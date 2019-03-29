@@ -28,8 +28,13 @@ def imageBoundingBox(img, M):
          minY: int for the maximum Y value of a corner
     """
     
+#TODO 8
+    #TODO-BLOCK-BEGIN
+    # Create a vector of coordinates
+    
+
     img_shape = img.shape
-    pxs =[np.array(M.dot([x,y,1])) for x in range(img.shape[0]) for y in range(img.shape[1])]
+    pxs =np.array([M.dot(np.array([x,y,1]).transpose()) for x in range(img.shape[0]) for y in range(img.shape[1])])
     norm_pxs = [np.array(px/px[2]) for px in pxs]
     minX,minY,minZ = np.amin(norm_pxs,axis=0)
     maxX,maxY,maxZ= np.amax(norm_pxs,axis=0)
@@ -49,13 +54,57 @@ def accumulateBlend(img, acc, M, blendWidth):
          three channels of acc record the weighted sum of the pixel colors
          and the fourth channel of acc records a sum of the weights
     """
+    print('acc',acc)
+    print('acc_shape',acc.shape)
+    print('img_shape',img.shape)
+    M_inv = np.linalg.inv(M)
+
+    # make blending matrix of ones: size of the image in 2D: 
+    blendMatrix = np.ones([img.shape[0],img.shape[1]])
+    # fill in blending matrix by lin interpolation
+
+      #alpha for each pixel (percentage of each pixel to put back into acc)
+      #alpha: line between (0,1) and (blendWidth-1,0)points: at 0 want full val, at blendwidth size want zero
+      # -1/(blendWidth-1)*np.arange(blendWidth)+1: 
+      # alpha decreasing function
+    alpha = 1/(1-blendWidth)*np.arange(blendWidth)+1
+      # blending_matrix 
+      # L: reversed alphas [increasing] up until blendWidth
+    blendMatrix[:,:blendWidth] = blendMatrix[:,:blendWidth]*alpha[::-1]
+      # Center: 1s
+      # R:  alphas [decreasing function] from blendWidth thru end of img (blending matrix)
+    blendMatrix[:,-blendWidth:] = blendMatrix[:,-blendWidth:]*alpha
+      # is the inverse of alpha [::-1]
+      # new matrix 4 dim: RGB img RGB dim * blending_matrix for each dim, [::3] is blending_matrix
+    print('Feathering matrix:',blendMatrix)
+    out_matrix = np.ones((img.shape[0],img.shape[1],img.shape[2]+1))
+
+    
+    out_matrix[:,:,-1] = blendMatrix
+    print(np.array_equal(out_matrix[:,:,3],blendMatrix))
+      # warp perspective it back acc[::i] set equal to alpha matrix dim [::-1]*M*alpha_mat.shape(0),alpha_mat.shape(1)
+    #UNSURE
+    for channel in range(img.shape[2]):
+        out_matrix[:,:,channel] = cv2.warpPerspective(img[:,:,channel],M_inv,(acc.shape[1],acc.shape[0]),flags=(cv2.INTER_NEAREST + cv2.WARP_INVERSE_MAP))
+
+    out_matrix[:,:,:3] = out_matrix[:,:,:3] * blendMatrix
+
+    # acc = np.array([acc[r,c] + out_matrix[r,c] for r in range(out_matrix.shape(0)) for c in range(out_matrix.shape(1))])
+    acc = out_matrix
+    
+    # acc_map = [np.array(M_inv.dot([x,y,1])) for x in range(img.shape[0]) for y in range(img.shape[1])]
+    # norm_acc_map = np.array([px/px[2] for px in acc_map])
+
+    # detransformed = cv2.perspectiveTransform(img, M_inv)
+
     # BEGIN TODO 10
     # Fill in this routine
     #TODO-BLOCK-BEGIN
-    raise Exception("TODO in blend.py not implemented")
+    # raise Exception("TODO in blend.py not implemented")
     #TODO-BLOCK-END
     # END TODO
 
+    return acc
 
 def normalizeBlend(acc):
     """
@@ -65,13 +114,27 @@ def normalizeBlend(acc):
        OUTPUT:
          img: image with r,g,b values of acc normalized
     """
+    print('acc_shape',acc.shape)
+    acc[acc[:,:,3] != 0] /= np.array(acc[:,:,3])
+    acc[acc[:,:,3] == 0] = 0
+    # acc[:,:,3] = 1
+    #if value is not zero:
+    #keep
+    #else, 
+    # acc[acc[:,:,3] != 0] /= np.array(list)
+    # divide all channels by the 4th channel if 4th channel is not zero 
+    # if 4th channel is zero, set pixels for all 3 dims to zero
+    #*4.T
+    #homography-ish
+    #set last channel equal 1, effectively acc[acc[:,:,3]==0] = 0
+    return np.array(acc[:,:,:3],dtype=np.uint8)
     # BEGIN TODO 11
     # fill in this routine..
     #TODO-BLOCK-BEGIN
-    raise Exception("TODO in blend.py not implemented")
+    # raise Exception("TODO in blend.py not implemented")
     #TODO-BLOCK-END
     # END TODO
-    return img
+    
 
 
 def getAccSize(ipv):
@@ -107,10 +170,16 @@ def getAccSize(ipv):
             channels = c
             width = w
 
+        this_min_x, this_min_y, this_max_x, this_max_y = imageBoundingBox(img, M)
+          
+        minX = min(this_min_x, minX)
+        minY = min(this_min_y, minY)
+        maxX = max(this_max_x, maxX)
+        maxY = max(this_max_y, maxY)
         # BEGIN TODO 9
         # add some code here to update minX, ..., maxY
         #TODO-BLOCK-BEGIN
-        raise Exception("TODO in blend.py not implemented")
+        # raise Exception("TODO in blend.py not implemented")
         #TODO-BLOCK-END
         # END TODO
 
@@ -196,13 +265,26 @@ def blendImages(ipv, blendWidth, is360=False, A_out=None):
     # BEGIN TODO 12
     # fill in appropriate entries in A to trim the left edge and
     # to take out the vertical drift if this is a 360 panorama
+    
     # (i.e. is360 is true)
     # Shift it left by the correct amount
     # Then handle the vertical drift
     # Note: warpPerspective does forward mapping which means A is an affine
     # transform that maps accumulator coordinates to final panorama coordinates
+    
+    # if is360: computedrift
+    # 
+    if is360:
+      A = computeDrift(x_init,y_init,x_final,y_final,width)
+    # if A_out is None: set A_out[:] to A 
+    
+    # Warp and crop composite
+    
+    # cv2.warpPerspective(compImage warped by A parameters)
+    # retun as np.uint8
+
     #TODO-BLOCK-BEGIN
-    raise Exception("TODO in blend.py not implemented")
+    # raise Exception("TODO in blend.py not implemented")
     #TODO-BLOCK-END
     # END TODO
 
@@ -210,9 +292,7 @@ def blendImages(ipv, blendWidth, is360=False, A_out=None):
         A_out[:] = A
 
     # Warp and crop the composite
-    croppedImage = cv2.warpPerspective(
-        compImage, A, (outputWidth, accHeight), flags=cv2.INTER_LINEAR
-    )
+    croppedImage = cv2.warpPerspective(compImage, A, (outputWidth, accHeight), flags=cv2.INTER_LINEAR)
 
     return croppedImage
 
