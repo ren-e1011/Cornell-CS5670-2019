@@ -32,30 +32,29 @@ def compute_photometric_stereo_impl(lights, images):
         normals -- float32 height x width x 3 image with dimensions matching
                    the input images.
     """
+    start = time.time()
     height, width, channel = images[0].shape[0], images[0].shape[1],images[0].shape[2]
-    
-    albedo = np.zeros((height, width, channel), dtype = np.float32)
-    normal = np.zeros((height, width, 3), dtype = np.float32)
-    
     num_images = len(images)
+
+    images = np.array(images)
+    I = images.reshape(num_images, height*width*channel)
+    L = lights.T
+    step1 = np.linalg.inv(np.dot(L, L.T))
+    G = np.dot(step1, np.dot(L, I))
+    p = np.linalg.norm(G, axis = 0)
     
-    for i in range(height):
-        #print (i)
-        for j in range(width):
-            for c in range(channel):
-                I = np.array([image[i,j,c] for image in images])
-                I.reshape((num_images,1))
-                L = lights.T
-                #print (L)
-                step1 = np.linalg.inv(np.dot(L, L.T))
-                G = np.dot(step1, np.dot(L, I))
-                p = np.linalg.norm(G)
-                if p < 1e-7:
-                    p, G_actual = 0, np.zeros((3,1))
-                else:
-                    G_actual = G/p
-                albedo[i,j,c] = p
-                normal[i,j] = G_actual.reshape((3,))
+    G3 = np.reshape(G.T, (height, width, channel, 3))
+    Ggray = np.mean(G3, axis = 2)
+    p_norm = np.linalg.norm(Ggray, axis = 2)
+    mark = p_norm < 1e-7
+    
+    normal = Ggray/np.maximum(1e-7, p_norm[:,:,np.newaxis])
+    normal[mark] = 0
+    albedo = p.reshape(height, width, channel)
+    albedo[mark] = 0
+    
+    end = time.time()
+    print (end - start)
 
     return albedo, normal
 
