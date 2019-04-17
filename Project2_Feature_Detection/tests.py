@@ -55,17 +55,9 @@ def try_this(todo, run, truth, compare, *args, **kargs):
         traceback.print_exc()
         print("TODO {} threw an exception, see exception above".format(todo))
         return
-<<<<<<< HEAD
-#print (truth)
     if type(output) is list or type(output) is tuple:
         for i in range(len(output)):
             if not compare(output[i], truth[i], **kargs):
-            
-=======
-    if type(output) is list or type(output) is tuple:
-        for i in range(len(output)):
-            if not compare(output[i], truth[i], **kargs):
->>>>>>> d692ce94ac66bc4ace0d921be9801d35fa0354a9
                 print("TODO {} doesn't pass test: {}".format(todo, i))
                 failed+=1
     else:

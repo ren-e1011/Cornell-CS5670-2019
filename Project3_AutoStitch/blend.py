@@ -12,6 +12,13 @@ class ImageInfo:
         self.position = position
 
 
+class ImageInfo:
+    def __init__(self, name, img, position):
+        self.name = name
+        self.img = img
+        self.position = position
+
+
 def imageBoundingBox(img, M):
     """
        This is a useful helper function that you might choose to implement
@@ -27,12 +34,14 @@ def imageBoundingBox(img, M):
          minX: int for the maximum X value of a corner
          minY: int for the maximum Y value of a corner
     """
-    #TODO 8
-    #TODO-BLOCK-BEGIN
-    raise Exception("TODO in blend.py not implemented")
-    #TODO-BLOCK-END
-    return int(minX), int(minY), int(maxX), int(maxY)
+    
+    img_shape = img.shape
+    pxs =[np.array(M.dot([x,y,1])) for x in range(img.shape[0]) for y in range(img.shape[1])]
+    norm_pxs = [np.array(px/px[2]) for px in pxs]
+    minX,minY,minZ = np.amin(norm_pxs,axis=0)
+    maxX,maxY,maxZ= np.amax(norm_pxs,axis=0)
 
+    return int(minX), int(minY), int(maxX), int(maxY)
 
 def accumulateBlend(img, acc, M, blendWidth):
     """
@@ -103,11 +112,18 @@ def getAccSize(ipv):
         if channels == -1:
             channels = c
             width = w
-
+        
+        
+        this_min_x, this_min_y, this_max_x, this_max_y = imageBoundingBox(img, M)
+        
+        minX = min(this_min_x, minX)
+        minY = min(this_min_y, minY)
+        maxX = max(this_max_x, maxX)
+        maxY = max(this_max_y, maxY)
         # BEGIN TODO 9
         # add some code here to update minX, ..., maxY
         #TODO-BLOCK-BEGIN
-        raise Exception("TODO in blend.py not implemented")
+#raise Exception("TODO in blend.py not implemented")
         #TODO-BLOCK-END
         # END TODO
 

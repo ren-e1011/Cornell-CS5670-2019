@@ -14,12 +14,9 @@ def compute_photometric_stereo_impl(lights, images):
     Given a set of images taken from the same viewpoint and a corresponding set
     of directions for light sources, this function computes the albedo and
     normal map of a Lambertian scene.
-
     If the computed albedo for a pixel has an L2 norm less than 1e-7, then set
     the albedo to black and set the normal to the 0 vector.
-
     Normals should be unit vectors.
-
     Input:
         lights -- N x 3 array.  Rows are normalized and are to be interpreted
                   as lighting directions.
@@ -83,9 +80,9 @@ def project_impl(K, Rt, points):
     print (projection.shape)
     #divide by the last axis
     projection_return = projection/(projection[:,:,2])[:,:,np.newaxis]
-    print (projection_return.shape)
     #take the first two axes
     return projection_return[:,:,0:2]
+
 
 
 
@@ -138,7 +135,27 @@ def preprocess_ncc_impl(image, ncc_size):
     Output:
         normalized -- heigth x width x (channels * ncc_size**2) array
     """
-    raise NotImplementedError()
+    #get channel size of image
+    #for each channel in image: 
+    for channel in range(image.shape[2]):
+        #confirm this does what you think it should do
+        channel_mean =  image[:,:,channel].mean()
+        if channel_mean < 1e-6: return np.zeros(ncc_size**2*image.shape[2])
+        image[:,:,channel] -= channel_mean
+        
+    ## compute mean
+    # subtract mean
+    # vectorize
+    # consider padding
+    for height in range(0,image.shape[0],ncc_size):
+        for width in range(0,image.shape[1],ncc_size):
+            v = np.reshape(a=image[height:height+ncc_size+1,width:width+ncc_size+1,:],newshape=(ncc_size**2*image.shape[2]),order='F')
+    ## divide by std.dev
+    ##INplace??
+            image[height:height+ncc_size+1,width:width+ncc_size+1] =  v/np.sqrt(np.linalg.norm(v))
+    return image
+    
+    # raise NotImplementedError()
 
 
 def compute_ncc_impl(image1, image2):
@@ -153,4 +170,9 @@ def compute_ncc_impl(image1, image2):
         ncc -- height x width normalized cross correlation between image1 and
                image2.
     """
-    raise NotImplementedError()
+    ncc = np.zeros(image1.shape[0],image1.shape[1])
+    for height in range(image1.shape[0]):
+        for width in range(image1.shape[1]):
+            ncc[height,width] = np.correlate(image1[height],image2[height])
+    return ncc
+    # raise NotImplementedError()

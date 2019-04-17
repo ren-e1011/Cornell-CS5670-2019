@@ -302,18 +302,18 @@ class HarrisKeypointDetector(KeypointDetector):
         # Loop through feature points in harrisMaxImage and fill in information
         # needed for descriptor computation for each point.
         # You need to fill x, y, and angle.
-        raise Exception("TODO 3: in features.py not implemented")
+    
                                             
         for y in range(height):
             for x in range(width):
-                if not harrisMaxImage[y, x]:
+                if not harrisMaxImage[y,x]:
                     continue
-            
+                                                            
                 f = cv2.KeyPoint()
-                f.pt = (y,x)
-                f.size = harrisImage[y,x]
+                f.pt = (x,y)
+                f.response = harrisImage[y,x]
                 f.angle = orientationImage[y,x]
-                
+                f.size = 10.0
                 features.append(f)
                 
                 # TODO 3: Fill in feature f with location and orientation
@@ -552,14 +552,16 @@ class SSDFeatureMatcher(FeatureMatcher):
         if desc1.shape[0] == 0 or desc2.shape[0] == 0:
             return []
         
-        # TODO 7: Perform simple feature matching.  This uses the SSD
-        # distance between two feature vectors, and matches a feature in
-        # the first image with the closest feature in the second image.
-        # Note: multiple features from the first image may match the same
-        # feature in the second image.
-        # TODO-BLOCK-BEGIN
-        raise Exception("TODO 7: in features.py not implemented")
-        # TODO-BLOCK-END
+        dist = scipy.spatial.distance.cdist(desc1, desc2, metric = 'euclidean')
+        index = np.argmin(dist, axis = 1)
+        
+        for i in range(desc1.shape[0]):
+            m = cv2.DMatch()
+            m.queryIdx = i
+            m.trainIdx = index[i]
+            m.distance = dist[i][index[i]]
+            
+            matches.append(m)
         
         return matches
 
@@ -592,16 +594,16 @@ class RatioFeatureMatcher(FeatureMatcher):
         if desc1.shape[0] == 0 or desc2.shape[0] == 0:
             return []
         
-        # TODO 8: Perform ratio feature matching.
-        # This uses the ratio of the SSD distance of the two best matches
-        # and matches a feature in the first image with the closest feature in the
-        # second image.
-        # Note: multiple features from the first image may match the same
-        # feature in the second image.
-        # You don't need to threshold matches in this function
-        # TODO-BLOCK-BEGIN
-        raise Exception("TODO 8: in features.py not implemented")
-        # TODO-BLOCK-END
+        dist = scipy.spatial.distance.cdist(desc1, desc2, metric = 'euclidean')
+        index = np.argmin(dist, axis = 1)
+        second_index = np.argsort(dist, axis=1)[:,1]
+        for i in range(desc1.shape[0]):
+            m = cv2.DMatch()
+            m.queryIdx = i
+            m.trainIdx = index[i]
+            m.distance = (dist[i][index[i]])/(dist[i][second_index[i]])
+            
+            matches.append(m)
         
         return matches
 
