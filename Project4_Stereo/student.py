@@ -60,8 +60,6 @@ def compute_photometric_stereo_impl(lights, images):
 
 
 
-
-
 def project_impl(K, Rt, points):
     """
     Project 3D points into a calibrated camera.
@@ -72,7 +70,22 @@ def project_impl(K, Rt, points):
     Output:
         projections -- height x width x 2 array of 2D projections
     """
-    raise NotImplementedError()
+
+    kRt = np.dot(K, Rt)
+    height = points.shape[0]
+    width = points.shape[1]
+    
+    #add a one vector to each of the x,y,z points
+    homography = np.concatenate((points, np.ones((height, width, 1))), axis = 2)
+    print (homography.shape)
+    #dot product between the homography and the intrinsics
+    projection = np.tensordot(homography, kRt.T, axes = 1)
+    print (projection.shape)
+    #divide by the last axis
+    projection_return = projection/(projection[:,:,2])[:,:,np.newaxis]
+    print (projection_return.shape)
+    #take the first two axes
+    return projection_return[:,:,0:2]
 
 
 
