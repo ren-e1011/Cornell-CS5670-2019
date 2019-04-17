@@ -29,6 +29,7 @@ class KeypointDetector(object):
             (in degrees), the detector response (Harris score for Harris detector)
             and set the size to 10.
         '''
+<<<<<<< HEAD
 
         #convert to greyscale??
 
@@ -75,6 +76,9 @@ class KeypointDetector(object):
         return keypoints
 
 
+=======
+        raise NotImplementedError()
+>>>>>>> d692ce94ac66bc4ace0d921be9801d35fa0354a9
 
 
 class DummyKeypointDetector(KeypointDetector):

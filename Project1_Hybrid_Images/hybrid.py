@@ -2,8 +2,6 @@ from __future__ import division
 from __future__ import absolute_import
 
 import sys
-sys.path.append('/Users/kb/bin/opencv-3.1.0/build/lib/')
-
 import cv2
 import numpy as np
 
@@ -131,7 +129,7 @@ def high_pass(img, sigma, size):
 
 
 def create_hybrid_image(img1, img2, sigma1, size1, high_low1, sigma2, size2,
-        high_low2, mixin_ratio):
+        high_low2, mixin_ratio, scale_factor):
     '''This function adds two images to create a hybrid image, based on
     parameters specified by the user.'''
     high_low1 = high_low1.lower()
@@ -151,14 +149,17 @@ def create_hybrid_image(img1, img2, sigma1, size1, high_low1, sigma2, size2,
     else:
         img2 = high_pass(img2, sigma2, size2)
 
-    img1 *= 2 * (1 - mixin_ratio)
-    img2 *= 2 * mixin_ratio
-    hybrid_img = (img1 + img2)
+    img1 *=  (1 - mixin_ratio)
+    img2 *= mixin_ratio
+    hybrid_img = (img1 + img2) * scale_factor
     return (hybrid_img * 255).clip(0, 255).astype(np.uint8)
 
+<<<<<<< HEAD
 
 if __name__ == '__main__':
     k = np.array([[0,0,0],[0,1,0],[0,0,0]])
     i = np.array([[1,2,3,4,5]]*5)
     print(cross_correlation_2d(i,k))
     print(gaussian_blur_kernel_2d(5, 5, 5))
+=======
+>>>>>>> d692ce94ac66bc4ace0d921be9801d35fa0354a9
