@@ -142,58 +142,67 @@ def preprocess_ncc_impl(image, ncc_size):
     #uniform types
     d_type=image.dtype.type
     print('d_type',d_type)
-    out_arr = np.zeros(shape=(image.shape[0] * image.shape[1] * (image.shape[2] * ncc_size**2)),dtype=d_type)
+    out_arr = np.zeros(shape=(image.shape[0] , image.shape[1] , (image.shape[2] * ncc_size**2)),dtype=d_type)
+    print('out_arr_init',out_arr)
     #get channel size of image
     #for each channel in image: 
     pre_shape = image.shape
+    print('pre_shape',pre_shape)
     for channel in range(image.shape[2]):
-        print('image channel-',channel,':',image[:,:,channel])
+        # print('image channel-',channel,':',image[:,:,channel])
         #confirm this does what you think it should do
         channel_mean =  d_type(image[:,:,channel].mean())
-        print('channel_mean',channel_mean)
-        # image[:,:,channel] = np.array([(px - channel_mean) for px in image[:,:,channel]])
-        #Dont return, just set patch. IF NORM
-        # if channel_mean < 1e-6: return np.zeros(ncc_size**2*image.shape[2])
+        # print('channel_mean',channel_mean,'channel_mean_type',type(channel_mean))
         image[:,:,channel] = np.subtract(image[:,:,channel],channel_mean)
-        print('image subtract mean ',image[:,:,channel])
+        # print('image channel',channel, 'subtract mean ',image[:,:,channel])
         print('image subtract mean SHAPE',image.shape)
         
     ## compute mean
     # subtract mean
     # vectorize
     # consider padding
-    patch_size = (ncc_size**2*image.shape[2])
-
+    patch_size = ((ncc_size**2)*image.shape[2])
+    print('out_arr_size',out_arr.size)
     for height in range(0,image.shape[0],ncc_size):
         for width in range(0,image.shape[1],ncc_size):
             #patch_height x patch_width x channels
             
             if height+ncc_size >= image.shape[0] or width+ncc_size >= image.shape[1]:
                 #keep vector patch chunk as zeros 
-                continue
-            #else
-            # v = np.zeros(shape=patch_size)
-            img_slice =image[height:height+ncc_size,width:width+ncc_size,:]
-            v = np.reshape(a=img_slice,newshape=patch_size,order='F')
-            norm = np.linalg.norm(v)
-            if norm < 1e-6: continue
-            #else
-            v = np.divide(v ,np.sqrt(norm))
-            out_arr[height*width:height*width+patch_size] = v
-            # v = np.reshape(a=image[height:height+ncc_size,width:width+ncc_size,:],newshape=(ncc_size**2*image.shape[2]),order='F')
-    ## divide by std.dev
-    ##INplace??
-    #         norm = np.linalg.norm(v)
-    #         if norm < 1e-6:
-    #             image[height:height+ncc_size,width:width+ncc_size] = np.zeros(v.size)
-    #         image[height:height+ncc_size,width:width+ncc_size] =  v/np.sqrt(norm)
-    # print('return_shape is correct?',image.shape == pre_shape[0]*pre_shape[1]*(pre_shape[2]*ncc_size**2))
-    # print('return_shape',return_shape)
-    # return image
+                v = np.zeros(shape=patch_size)
+                # continue
+            else:
+                img_slice =image[height:height+ncc_size,width:width+ncc_size,:]
+                print('img_slice',img_slice)
+                v = []
+                for channel in range(img_slice.shape[2]):
+                    for row in range(img_slice.shape[0]):
+                        for col in range(img_slice.shape[1]):
+                            v.append(img_slice[row,col,channel])
+                v = np.array(v)
 
+                # v = np.array([val for h in img_slice[0] for w in img_slice[1] for val in img_slice[2]])
+                # v = np.reshape(a=img_slice,newshape=patch_size,order='F')
+                print('img_slice_shape',img_slice.shape,'patch_size',patch_size,'v_size',len(v))
+                # print('v',v)
+                # print('v_prenormed',v)
+                norm = np.linalg.norm(v)
+                # norm = np.std(v)
+                print('norm',norm)
+                if norm < 1e-6: 
+                    print('negligible norm. continuing')
+                    v = np.zeros(shape=patch_size)
+                    # continue
+                #else
+                # v = np.divide(v ,np.sqrt(norm))
+                v = np.divide(v,norm)
 
-    
-    # raise NotImplementedError()
+            # print('out_arr_start',height*width,'out_arr_end',height*width+patch_size)
+            # out_arr[height*width:height*width+patch_size] = v
+            out_arr[height,width] = v
+            
+    print('out_arr_shape',out_arr.shape)
+    return out_arr
 
 
 def compute_ncc_impl(image1, image2):
