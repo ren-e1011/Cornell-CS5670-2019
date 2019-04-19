@@ -141,41 +141,40 @@ def preprocess_ncc_impl(image, ncc_size):
     #height * width * (channel s* ncc_size**2)
     #uniform types
     d_type=image.dtype.type
-    print('d_type',d_type)
+    # print('d_type',d_type)
     out_arr = np.zeros(shape=(image.shape[0] , image.shape[1] , (image.shape[2] * ncc_size**2)),dtype=d_type)
-    print('out_arr_init',out_arr)
+    # print('out_arr_init_shape',out_arr.shape)
     #get channel size of image
     #for each channel in image: 
-    pre_shape = image.shape
-    print('pre_shape',pre_shape)
-    for channel in range(image.shape[2]):
-        # print('image channel-',channel,':',image[:,:,channel])
-        #confirm this does what you think it should do
-        channel_mean =  d_type(image[:,:,channel].mean())
-        # print('channel_mean',channel_mean,'channel_mean_type',type(channel_mean))
-        image[:,:,channel] = np.subtract(image[:,:,channel],channel_mean)
-        # print('image channel',channel, 'subtract mean ',image[:,:,channel])
-        print('image subtract mean SHAPE',image.shape)
+    # pre_shape = image.shape
+    # # print('pre_shape',pre_shape)
+    # for channel in range(image.shape[2]):
+    #     #confirm this does what you think it should do
+    #     channel_mean =  d_type(image[:,:,channel].mean())
+    #     image[:,:,channel] = np.subtract(image[:,:,channel],channel_mean)
         
     ## compute mean
     # subtract mean
     # vectorize
     # consider padding
     patch_size = ((ncc_size**2)*image.shape[2])
-    print('out_arr_size',out_arr.size)
-    for height in range(0,image.shape[0],ncc_size):
-        for width in range(0,image.shape[1],ncc_size):
+    # print('out_arr_size',out_arr.size)
+    for height in range(image.shape[0]):
+        for width in range(image.shape[1]):
             #patch_height x patch_width x channels
             
-            if height+ncc_size >= image.shape[0] or width+ncc_size >= image.shape[1]:
+            if height+(ncc_size/2) >= image.shape[0] or width+(ncc_size/2) >= image.shape[1] or height-(ncc_size/2) < 0 or width-(ncc_size/2) < 0:
                 #keep vector patch chunk as zeros 
                 v = np.zeros(shape=patch_size)
                 # continue
             else:
-                img_slice =image[height:height+ncc_size,width:width+ncc_size,:]
-                print('img_slice',img_slice)
+                img_slice =image[height-(ncc_size/2):height+(ncc_size/2)+1,width-(ncc_size/2):width+(ncc_size/2)+1,:]
+                img_slice = img_slice.copy()
+                # print(img_slice.shape == )
                 v = []
                 for channel in range(img_slice.shape[2]):
+                    img_slice[:,:,channel] -= d_type(img_slice[:,:,channel].mean())
+                    
                     for row in range(img_slice.shape[0]):
                         for col in range(img_slice.shape[1]):
                             v.append(img_slice[row,col,channel])
@@ -183,25 +182,27 @@ def preprocess_ncc_impl(image, ncc_size):
 
                 # v = np.array([val for h in img_slice[0] for w in img_slice[1] for val in img_slice[2]])
                 # v = np.reshape(a=img_slice,newshape=patch_size,order='F')
-                print('img_slice_shape',img_slice.shape,'patch_size',patch_size,'v_size',len(v))
+                # print('img_slice_shape',img_slice.shape,'patch_size',patch_size,'v_size',len(v))
                 # print('v',v)
                 # print('v_prenormed',v)
                 norm = np.linalg.norm(v)
                 # norm = np.std(v)
-                print('norm',norm)
+                # print('norm',norm)
                 if norm < 1e-6: 
-                    print('negligible norm. continuing')
+                    # print('negligible norm. continuing')
                     v = np.zeros(shape=patch_size)
                     # continue
                 #else
                 # v = np.divide(v ,np.sqrt(norm))
-                v = np.divide(v,norm)
+                else:
+                    v = np.divide(v,norm)
 
             # print('out_arr_start',height*width,'out_arr_end',height*width+patch_size)
             # out_arr[height*width:height*width+patch_size] = v
-            out_arr[height,width] = v
-            
-    print('out_arr_shape',out_arr.shape)
+            out_arr[height,width, :] = v
+    # print('patch_size',patch_size)        
+    # print('out_arr_shape',out_arr.shape, 'img_shape',image.shape)
+    # print('out_arr',out_arr)
     return out_arr
 
 
@@ -218,9 +219,9 @@ def compute_ncc_impl(image1, image2):
         ncc -- height x width normalized cross correlation between image1 and
                image2.
     """
-    ncc = np.zeros(image1.shape[0],image1.shape[1])
+    ncc = np.zeros(shape=(image1.shape[0],image1.shape[1]))
     for height in range(image1.shape[0]):
         for width in range(image1.shape[1]):
-            ncc[height,width] = np.correlate(image1[height],image2[height])
+            ncc[height,width] = np.correlate(image1[height,width,:],image2[height,width,:])
     return ncc
     
