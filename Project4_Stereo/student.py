@@ -138,7 +138,6 @@ def preprocess_ncc_impl(image, ncc_size):
     Output:
         normalized -- heigth x width x (channels * ncc_size**2) array
     """
-    #height * width * (channel s* ncc_size**2)
     #uniform types
     # d_type=image.dtype.type
 
@@ -146,22 +145,10 @@ def preprocess_ncc_impl(image, ncc_size):
     print('d_type',d_type)
     out_arr = np.zeros(shape=(image.shape[0] , image.shape[1] , (image.shape[2] * ncc_size**2))).astype(d_type)
     print('out_arr_dtype',out_arr.dtype.type)
-    # print('out_arr_init_shape',out_arr.shape)
-    #get channel size of image
-    #for each channel in image: 
-    # pre_shape = image.shape
-    # # print('pre_shape',pre_shape)
-    # for channel in range(image.shape[2]):
-    #     #confirm this does what you think it should do
-    #     channel_mean =  d_type(image[:,:,channel].mean())
-    #     image[:,:,channel] = np.subtract(image[:,:,channel],channel_mean)
         
     ## compute mean
     # subtract mean
-    # vectorize
-    # consider padding
     patch_size = ((ncc_size**2)*image.shape[2])
-    # print('out_arr_size',out_arr.size)
     for height in range(image.shape[0]):
         for width in range(image.shape[1]):
             #patch_height x patch_width x channels
@@ -169,45 +156,24 @@ def preprocess_ncc_impl(image, ncc_size):
             if height+(ncc_size/2) >= image.shape[0] or width+(ncc_size/2) >= image.shape[1] or height-(ncc_size/2) < 0 or width-(ncc_size/2) < 0:
                 #keep vector patch chunk as zeros 
                 v = np.zeros(shape=patch_size)
-                # continue
             else:
                 img_slice =image[height-(ncc_size/2):height+(ncc_size/2)+1,width-(ncc_size/2):width+(ncc_size/2)+1,:].astype(d_type)
                 img_slice = img_slice.copy()
-                print('img_slice.dtype.type',img_slice.dtype.type)
-                # print(img_slice.shape == )
                 v = []
                 for channel in range(img_slice.shape[2]):
                     img_slice[:,:,channel] -= d_type(img_slice[:,:,channel].mean())
-                    print('img_slice.dtype.type - POST RM MEAN',img_slice[:,:,channel].dtype.type)
                     for row in range(img_slice.shape[0]):
                         for col in range(img_slice.shape[1]):
                             v.append(img_slice[row,col,channel])
                 v = np.array(v).astype(d_type)
-                print('v_dtype',v.dtype.type)
 
-                # v = np.array([val for h in img_slice[0] for w in img_slice[1] for val in img_slice[2]])
-                # v = np.reshape(a=img_slice,newshape=patch_size,order='F')
-                # print('img_slice_shape',img_slice.shape,'patch_size',patch_size,'v_size',len(v))
-                # print('v',v)
-                # print('v_prenormed',v)
                 norm = np.linalg.norm(v)
-                # norm = np.std(v)
-                # print('norm',norm)
                 if norm < 1e-6: 
-                    # print('negligible norm. continuing')
                     v = np.zeros(shape=patch_size)
-                    # continue
-                #else
-                # v = np.divide(v ,np.sqrt(norm))
                 else:
                     v = np.divide(v,norm)
 
-            # print('out_arr_start',height*width,'out_arr_end',height*width+patch_size)
-            # out_arr[height*width:height*width+patch_size] = v
             out_arr[height,width, :] = v
-    # print('patch_size',patch_size)        
-    # print('out_arr_shape',out_arr.shape, 'img_shape',image.shape)
-    # print('out_arr',out_arr)
     return out_arr
 
 
