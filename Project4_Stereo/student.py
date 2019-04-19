@@ -77,13 +77,13 @@ def project_impl(K, Rt, points):
     
     #add a one vector to each of the x,y,z points
     homography = np.concatenate((points, np.ones((height, width, 1))), axis = 2)
-    print (homography.shape)
+    # print (homography.shape)
     #dot product between the homography and the intrinsics
     projection = np.tensordot(homography, kRt.T, axes = 1)
-    print (projection.shape)
+    # print (projection.shape)
     #divide by the last axis
     projection_return = projection/(projection[:,:,2])[:,:,np.newaxis]
-    print (projection_return.shape)
+    # print (projection_return.shape)
     #take the first two axes
     return projection_return[:,:,0:2]
 
@@ -160,9 +160,10 @@ def preprocess_ncc_impl(image, ncc_size):
                 v = []
                 for channel in range(img_slice.shape[2]):
                     img_slice[:,:,channel] -= d_type(img_slice[:,:,channel].mean())
-                    for row in range(img_slice.shape[0]):
-                        for col in range(img_slice.shape[1]):
-                            v.append(img_slice[row,col,channel])
+                    v.extend(np.reshape(img_slice[:,:,channel],newshape=img_slice[:,:,channel].size))
+                #     for row in range(img_slice.shape[0]):
+                #         for col in range(img_slice.shape[1]):
+                #             v.append(img_slice[row,col,channel])
                 v = np.array(v).astype(d_type)
 
                 norm = np.linalg.norm(v)
