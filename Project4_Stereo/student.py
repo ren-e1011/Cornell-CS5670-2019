@@ -142,9 +142,7 @@ def preprocess_ncc_impl(image, ncc_size):
     # d_type=image.dtype.type
 
     d_type = np.float32
-    print('d_type',d_type)
     out_arr = np.zeros(shape=(image.shape[0] , image.shape[1] , (image.shape[2] * ncc_size**2))).astype(d_type)
-    print('out_arr_dtype',out_arr.dtype.type)
         
     ## compute mean
     # subtract mean
