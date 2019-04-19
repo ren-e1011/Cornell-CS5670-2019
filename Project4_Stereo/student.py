@@ -140,9 +140,12 @@ def preprocess_ncc_impl(image, ncc_size):
     """
     #height * width * (channel s* ncc_size**2)
     #uniform types
-    d_type=image.dtype.type
-    # print('d_type',d_type)
-    out_arr = np.zeros(shape=(image.shape[0] , image.shape[1] , (image.shape[2] * ncc_size**2)),dtype=d_type)
+    # d_type=image.dtype.type
+
+    d_type = np.float32
+    print('d_type',d_type)
+    out_arr = np.zeros(shape=(image.shape[0] , image.shape[1] , (image.shape[2] * ncc_size**2))).astype(d_type)
+    print('out_arr_dtype',out_arr.dtype.type)
     # print('out_arr_init_shape',out_arr.shape)
     #get channel size of image
     #for each channel in image: 
@@ -168,17 +171,19 @@ def preprocess_ncc_impl(image, ncc_size):
                 v = np.zeros(shape=patch_size)
                 # continue
             else:
-                img_slice =image[height-(ncc_size/2):height+(ncc_size/2)+1,width-(ncc_size/2):width+(ncc_size/2)+1,:]
+                img_slice =image[height-(ncc_size/2):height+(ncc_size/2)+1,width-(ncc_size/2):width+(ncc_size/2)+1,:].astype(d_type)
                 img_slice = img_slice.copy()
+                print('img_slice.dtype.type',img_slice.dtype.type)
                 # print(img_slice.shape == )
                 v = []
                 for channel in range(img_slice.shape[2]):
                     img_slice[:,:,channel] -= d_type(img_slice[:,:,channel].mean())
-                    
+                    print('img_slice.dtype.type - POST RM MEAN',img_slice[:,:,channel].dtype.type)
                     for row in range(img_slice.shape[0]):
                         for col in range(img_slice.shape[1]):
                             v.append(img_slice[row,col,channel])
-                v = np.array(v)
+                v = np.array(v).astype(d_type)
+                print('v_dtype',v.dtype.type)
 
                 # v = np.array([val for h in img_slice[0] for w in img_slice[1] for val in img_slice[2]])
                 # v = np.reshape(a=img_slice,newshape=patch_size,order='F')
